@@ -19,8 +19,11 @@ async function solicitar(ruta, opciones = {}) {
 }
 
 export const api = {
-  login: (email, password) =>
-    solicitar("/usuarios/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  login: (identifier, password) =>
+    solicitar("/usuarios/login", {
+      method: "POST",
+      body: JSON.stringify({ identifier, password }),
+    }),
   registrar: (datos) =>
     solicitar("/usuarios/registro", { method: "POST", body: JSON.stringify(datos) }),
 

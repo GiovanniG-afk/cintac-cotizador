@@ -5,6 +5,7 @@ import { conectarDB } from "./config/db.js";
 import cotizacionesRouter from "./routes/cotizaciones.js";
 import usuariosRouter from "./routes/usuarios.js";
 import tipoCambioRouter from "./routes/tipoCambio.js";
+import { ensureDefaultAdmin } from "./utils/seedAdmin.js";
 
 const app = express();
 
@@ -22,7 +23,14 @@ app.use(async (req, res, next) => {
   }
 });
 
-app.get("/api/health", (req, res) => res.json({ ok: true }));
+app.get("/api/health", async (_req, res) => {
+  try {
+    await ensureDefaultAdmin();
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ error: "No se pudo verificar el usuario administrador." });
+  }
+});
 app.use("/api/usuarios", usuariosRouter);
 app.use("/api/cotizaciones", cotizacionesRouter);
 app.use("/api/tipo-cambio", tipoCambioRouter);

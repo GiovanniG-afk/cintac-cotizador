@@ -3,6 +3,14 @@ import mongoose from "mongoose";
 const usuarioSchema = new mongoose.Schema(
   {
     nombre: { type: String, required: true, trim: true },
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+      lowercase: true,
+      minlength: 3,
+    },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     rol: {

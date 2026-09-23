@@ -4,7 +4,11 @@ import { api } from "../api/api.js";
 import { useAuth } from "../api/AuthContext.jsx";
 
 export default function Login() {
-  const [email, setEmail] = useState("admin_cintac");
+  const [modo, setModo] = useState("login");
+  const [identifier, setIdentifier] = useState("Cintac_Admin");
+  const [nombre, setNombre] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("cintac2026");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -16,7 +20,14 @@ export default function Login() {
     setError("");
     setCargando(true);
     try {
-      const { token, usuario } = await api.login(email, password);
+      if (modo === "registro") {
+        const { token, usuario } = await api.registrar({ nombre, username, email, password, rol: "administrador" });
+        iniciarSesion(token, usuario);
+        navigate("/");
+        return;
+      }
+
+      const { token, usuario } = await api.login(identifier, password);
       iniciarSesion(token, usuario);
       navigate("/");
     } catch (err) {
@@ -36,17 +47,61 @@ export default function Login() {
       </div>
 
       <form onSubmit={manejarEnvio} className="tarjeta mt-5 w-full">
-        <div>
-          <label htmlFor="email">Usuario</label>
-          <input
-            id="email"
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1"
-          />
-        </div>
+        {modo === "registro" ? (
+          <>
+            <div>
+              <label htmlFor="nombre">Nombre</label>
+              <input
+                id="nombre"
+                type="text"
+                required
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                className="mt-1"
+                placeholder="Tu nombre"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="username">Usuario</label>
+              <input
+                id="username"
+                type="text"
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="mt-1"
+                placeholder="usuario_cintac"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="emailRegistro">Correo electrónico</label>
+              <input
+                id="emailRegistro"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1"
+                placeholder="nombre@cintac.cl"
+              />
+            </div>
+          </>
+        ) : (
+          <div>
+            <label htmlFor="identifier">Correo o usuario</label>
+            <input
+              id="identifier"
+              type="text"
+              required
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              className="mt-1"
+              placeholder="usuario o nombre@cintac.cl"
+            />
+          </div>
+        )}
 
         <div>
           <label htmlFor="password">Contraseña</label>
@@ -57,6 +112,7 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="mt-1"
+            placeholder={modo === "registro" ? "Crea una contraseña" : "Contraseña"}
           />
         </div>
 
@@ -67,9 +123,20 @@ export default function Login() {
         )}
 
         <button type="submit" disabled={cargando} className="btn-primario">
-          {cargando ? "Ingresando..." : "Ingresar"}
+          {cargando ? "Procesando..." : modo === "registro" ? "Crear cuenta" : "Ingresar"}
         </button>
       </form>
+
+      <button
+        type="button"
+        className="mt-4 text-[13px] text-[#555] underline underline-offset-2"
+        onClick={() => {
+          setError("");
+          setModo((prev) => (prev === "login" ? "registro" : "login"));
+        }}
+      >
+        {modo === "login" ? "Crear una cuenta" : "Volver al inicio de sesión"}
+      </button>
     </div>
   );
 }

@@ -12,20 +12,31 @@ function firmarToken(usuario) {
 
 export async function registrar(req, res) {
   try {
-    const { nombre, email, password, rol } = req.body;
-    if (!nombre || !email || !password) {
-      return res.status(400).json({ error: "Nombre, email y contraseña son obligatorios." });
+    const { nombre, username, email, password, rol } = req.body;
+    if (!nombre || !username || !email || !password) {
+      return res.status(400).json({ error: "Nombre, usuario, email y contraseña son obligatorios." });
     }
 
-    const existente = await Usuario.findOne({ email: email.toLowerCase() });
+    const usernameNormalizado = String(username).trim();
+    const emailNormalizado = String(email).trim().toLowerCase();
+
+    const existente = await Usuario.findOne({
+      $or: [{ username: usernameNormalizado.toLowerCase() }, { email: emailNormalizado }],
+    });
+
     if (existente) {
-      return res.status(409).json({ error: "Ya existe un usuario con ese email." });
+      return res.status(409).json({
+        error: existente.username === usernameNormalizado.toLowerCase()
+          ? "Ya existe un usuario con ese nombre de usuario."
+          : "Ya existe un usuario con ese email.",
+      });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const usuario = await Usuario.create({
       nombre,
-      email,
+      username: usernameNormalizado,
+      email: emailNormalizado,
       passwordHash,
       rol: rol || "analista",
     });
@@ -33,7 +44,7 @@ export async function registrar(req, res) {
     const token = firmarToken(usuario);
     res.status(201).json({
       token,
-      usuario: { id: usuario._id, nombre: usuario.nombre, rol: usuario.rol },
+      usuario: { id: usuario._id, nombre: usuario.nombre, username: usuario.username, rol: usuario.rol },
     });
   } catch (err) {
     res.status(500).json({ error: "No se pudo crear el usuario." });
@@ -42,21 +53,33 @@ export async function registrar(req, res) {
 
 export async function login(req, res) {
   try {
-    const { email, password } = req.body;
-    const usuario = await Usuario.findOne({ email: (email || "").toLowerCase() });
+    const { identifier, email, username, password } = req.body;
+    const valor = String((identifier ?? email ?? username ?? "") || "").trim();
+
+    if (!valor || !password) {
+      return res.status(400).json({ error: "Usuario o email y contraseña son obligatorios." });
+    }
+
+    const usuario = await Usuario.findOne({
+      $or: [
+        { email: valor.toLowerCase() },
+        { username: valor.toLowerCase() },
+      ],
+    });
+
     if (!usuario || !usuario.activo) {
-      return res.status(401).json({ error: "Email o contraseña incorrectos." });
+      return res.status(401).json({ error: "Usuario o contraseña incorrectos." });
     }
 
     const coincide = await bcrypt.compare(password, usuario.passwordHash);
     if (!coincide) {
-      return res.status(401).json({ error: "Email o contraseña incorrectos." });
+      return res.status(401).json({ error: "Usuario o contraseña incorrectos." });
     }
 
     const token = firmarToken(usuario);
     res.json({
       token,
-      usuario: { id: usuario._id, nombre: usuario.nombre, rol: usuario.rol },
+      usuario: { id: usuario._id, nombre: usuario.nombre, username: usuario.username, rol: usuario.rol },
     });
   } catch (err) {
     res.status(500).json({ error: "No se pudo iniciar sesión." });
