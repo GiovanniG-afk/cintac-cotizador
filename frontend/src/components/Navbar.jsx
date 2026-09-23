@@ -16,21 +16,21 @@ export default function Navbar() {
   if (!usuario) return null;
 
   return (
-    <header className="border-b border-acero-claro/25 bg-white">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-6 py-4">
-        <div>
-          <h1 className="text-xl font-semibold">Cotizador de Importaciones</h1>
-          <p className="text-sm text-acero-claro">Cintac — productos metalúrgicos</p>
+    <header className="border-b-[4px] border-[#ff4f01] bg-white">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+        <div className="flex items-center gap-4">
+          <div className="text-[26px] font-bold uppercase tracking-[1px] text-[#e55303]">CINTAC</div>
+          <div className="hidden text-sm font-medium text-[#fa8b0f] sm:block">Cotizador de flete de importación</div>
         </div>
 
-        <nav className="flex flex-wrap items-center gap-4">
+        <nav className="flex flex-wrap items-center gap-4 text-base font-medium text-[#1a1a1a]">
           {enlaces.map((enlace) => (
             <NavLink
               key={enlace.to}
               to={enlace.to}
               end={enlace.fin}
               className={({ isActive }) =>
-                `text-lg font-medium ${isActive ? "text-ambar" : "text-acero hover:text-ambar"}`
+                `${isActive ? "text-[#e55303]" : "text-[#1a1a1a] hover:text-[#e55303]"}`
               }
             >
               {enlace.texto}
@@ -40,7 +40,7 @@ export default function Navbar() {
             <NavLink
               to="/usuarios"
               className={({ isActive }) =>
-                `text-lg font-medium ${isActive ? "text-ambar" : "text-acero hover:text-ambar"}`
+                `${isActive ? "text-[#e55303]" : "text-[#1a1a1a] hover:text-[#e55303]"}`
               }
             >
               Usuarios
@@ -48,12 +48,12 @@ export default function Navbar() {
           )}
         </nav>
 
-        <div className="flex items-center gap-3">
-          <span className="text-base text-acero-claro">
+        <div className="flex items-center gap-3 text-sm text-[#1a1a1a]">
+          <span>
             {usuario.nombre} · <span className="italic">{usuario.rol.replace("_", " ")}</span>
           </span>
           <button
-            className="btn-secundario px-4 py-2 text-base"
+            className="btn-secundario px-4 py-2 text-sm"
             onClick={() => {
               cerrarSesion();
               navigate("/login");
