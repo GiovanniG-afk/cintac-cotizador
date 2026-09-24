@@ -30,6 +30,11 @@ const textos = {
     nueva: "Nueva contraseña",
     restablecer: "Guardar nueva contraseña",
     exitoReset: "Contraseña actualizada correctamente.",
+    recuperarLink: "¿Olvidaste tu contraseña?",
+    enviarCodigo: "Enviar código",
+    codigoRecibido: "Código recibido",
+    confirmarCambio: "Confirmar cambio",
+    descripcionReset: "Te enviaremos un código de verificación a tu correo para cambiar la contraseña sin pedir la actual.",
   },
   en: {
     acceso: "Import freight quote — Cintac access",
@@ -57,6 +62,11 @@ const textos = {
     nueva: "New password",
     restablecer: "Save new password",
     exitoReset: "Password updated successfully.",
+    recuperarLink: "Forgot your password?",
+    enviarCodigo: "Send code",
+    codigoRecibido: "Code received",
+    confirmarCambio: "Confirm change",
+    descripcionReset: "We will send a verification code to your email so you can change the password without entering the current one.",
   },
   ru: {
     acceso: "Калькулятор фрахта — доступ Cintac",
@@ -84,6 +94,11 @@ const textos = {
     nueva: "Новый пароль",
     restablecer: "Сохранить новый пароль",
     exitoReset: "Пароль успешно обновлён.",
+    recuperarLink: "Забыли пароль?",
+    enviarCodigo: "Отправить код",
+    codigoRecibido: "Полученный код",
+    confirmarCambio: "Подтвердить смену",
+    descripcionReset: "Мы отправим код подтверждения на вашу почту, чтобы вы могли сменить пароль без ввода текущего.",
   },
   zh: {
     acceso: "进口运费报价器 — Cintac 登录",
@@ -111,6 +126,11 @@ const textos = {
     nueva: "新密码",
     restablecer: "保存新密码",
     exitoReset: "密码已成功更新。",
+    recuperarLink: "忘记密码？",
+    enviarCodigo: "发送验证码",
+    codigoRecibido: "收到的验证码",
+    confirmarCambio: "确认更改",
+    descripcionReset: "我们会将验证码发送到您的邮箱，随后可在不输入当前密码的情况下完成修改。",
   },
 };
 const MAX_INTENTOS = 5;
@@ -130,11 +150,21 @@ export default function Login() {
   const [intentosFallidos, setIntentosFallidos] = useState(Number(localStorage.getItem("cintac-login-fails") || 0));
   const [mostrarCambioPassword, setMostrarCambioPassword] = useState(false);
   const [resetIdentifier, setResetIdentifier] = useState("");
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetCodigo, setResetCodigo] = useState("");
   const [resetPassword, setResetPassword] = useState("");
   const [resetNuevaPassword, setResetNuevaPassword] = useState("");
   const [resetOk, setResetOk] = useState("");
-  const { iniciarSesion } = useAuth();
+  const [codigoGenerado, setCodigoGenerado] = useState("");
+  const { usuario, iniciarSesion } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (usuario) {
+      limpiarIntentos();
+      navigate("/", { replace: true });
+    }
+  }, [usuario, navigate]);
 
   useEffect(() => {
     localStorage.setItem("cintac-language", idioma);
@@ -153,9 +183,15 @@ export default function Login() {
   const t = textos[idioma] || textos.es;
 
   function limpiarIntentos() {
-    localStorage.setItem("cintac-login-fails", "0");
+    localStorage.removeItem("cintac-login-fails");
     setIntentosFallidos(0);
     setMostrarCambioPassword(false);
+    setResetIdentifier("");
+    setResetEmail("");
+    setResetCodigo("");
+    setResetPassword("");
+    setResetNuevaPassword("");
+    setCodigoGenerado("");
     setResetOk("");
   }
 
@@ -195,6 +231,24 @@ export default function Login() {
     }
   }
 
+  async function manejarCodigoReset(e) {
+    e.preventDefault();
+    setError("");
+    setResetOk("");
+
+    try {
+      const usuarioIdentificador = resetIdentifier || identifier;
+      const respuesta = await api.solicitarCodigoReset({
+        identifier: usuarioIdentificador,
+        email: resetEmail || email || "",
+      });
+      setCodigoGenerado(String(respuesta.codigo));
+      setResetOk(`Código enviado a ${respuesta.email}.`);
+    } catch (err) {
+      setError(err.message);
+    }
+  }
+
   async function manejarCambioPasswordBloqueado(e) {
     e.preventDefault();
     setError("");
@@ -203,7 +257,8 @@ export default function Login() {
       const usuarioIdentificador = resetIdentifier || identifier;
       const { token, usuario } = await api.reestablecerPassword({
         identifier: usuarioIdentificador,
-        password: resetPassword,
+        email: resetEmail || email || "",
+        codigo: resetCodigo,
         nuevaPassword: resetNuevaPassword,
       });
       iniciarSesion(token, usuario, rememberMe);
@@ -312,10 +367,10 @@ export default function Login() {
         {intentosFallidos >= MAX_INTENTOS && (
           <button
             type="button"
-            className="btn-secundario mt-3"
+            className="mt-3 text-left text-xs font-medium text-[#f5b483] underline underline-offset-2"
             onClick={() => setMostrarCambioPassword((prev) => !prev)}
           >
-            {t.cambiarPassword}
+            {t.recuperarLink}
           </button>
         )}
 
@@ -325,8 +380,9 @@ export default function Login() {
       </form>
 
       {mostrarCambioPassword && (
-        <form onSubmit={manejarCambioPasswordBloqueado} className="tarjeta mt-4 w-full">
+        <form onSubmit={codigoGenerado ? manejarCambioPasswordBloqueado : manejarCodigoReset} className="tarjeta mt-4 w-full">
           <h3 className="mb-2 text-left text-base">{t.cambiarPassword}</h3>
+          <p className="mb-3 text-left text-xs text-slate-300">{t.descripcionReset}</p>
           <div>
             <label htmlFor="resetIdentifier">{t.correo}</label>
             <input
@@ -339,29 +395,48 @@ export default function Login() {
             />
           </div>
           <div>
-            <label htmlFor="resetPassword">{t.actual}</label>
+            <label htmlFor="resetEmail">{t.correoRegistro}</label>
             <input
-              id="resetPassword"
-              type="password"
-              required
-              value={resetPassword}
-              onChange={(e) => setResetPassword(e.target.value)}
+              id="resetEmail"
+              type="email"
+              value={resetEmail || email || ""}
+              onChange={(e) => setResetEmail(e.target.value)}
               className="mt-1"
+              placeholder="usuario@cintac.cl"
             />
           </div>
-          <div>
-            <label htmlFor="resetNuevaPassword">{t.nueva}</label>
-            <input
-              id="resetNuevaPassword"
-              type="password"
-              required
-              value={resetNuevaPassword}
-              onChange={(e) => setResetNuevaPassword(e.target.value)}
-              className="mt-1"
-            />
-          </div>
+
+          {!codigoGenerado ? (
+            <button type="submit" className="btn-secundario mt-3 w-full">{t.enviarCodigo}</button>
+          ) : (
+            <>
+              <div>
+                <label htmlFor="resetCodigo">{t.codigoRecibido}</label>
+                <input
+                  id="resetCodigo"
+                  type="text"
+                  required
+                  value={resetCodigo}
+                  onChange={(e) => setResetCodigo(e.target.value)}
+                  className="mt-1"
+                  placeholder="123456"
+                />
+              </div>
+              <div>
+                <label htmlFor="resetNuevaPassword">{t.nueva}</label>
+                <input
+                  id="resetNuevaPassword"
+                  type="password"
+                  required
+                  value={resetNuevaPassword}
+                  onChange={(e) => setResetNuevaPassword(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <button type="submit" className="btn-primario mt-3 w-full">{t.confirmarCambio}</button>
+            </>
+          )}
           {resetOk && <p className="mt-3 text-sm text-green-700">{resetOk}</p>}
-          <button type="submit" className="btn-primario">{t.restablecer}</button>
         </form>
       )}
 
@@ -384,16 +459,30 @@ export default function Login() {
         </div>
       </div>
 
-      <button
-        type="button"
-        className="mt-4 text-[13px] text-[#555] underline underline-offset-2"
-        onClick={() => {
-          setError("");
-          setModo((prev) => (prev === "login" ? "registro" : "login"));
-        }}
-      >
-        {modo === "login" ? t.alternar : t.volver}
-      </button>
+      {modo === "registro" ? (
+        <button
+          type="button"
+          className="mt-4 w-full rounded-md border border-[#e55303] bg-white px-3 py-2 text-[13px] font-semibold text-[#e55303] transition hover:bg-[#fff6f0]"
+          onClick={() => {
+            setError("");
+            setPassword("");
+            setModo("login");
+          }}
+        >
+          {t.volver}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="mt-4 text-[13px] text-[#555] underline underline-offset-2"
+          onClick={() => {
+            setError("");
+            setModo("registro");
+          }}
+        >
+          {t.alternar}
+        </button>
+      )}
     </div>
   );
 }

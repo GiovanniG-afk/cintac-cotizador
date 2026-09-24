@@ -202,12 +202,13 @@ export async function actualizarPassword(req, res) {
 
 export async function resetPassword(req, res) {
   try {
-    const { identifier, password, nuevaPassword } = req.body;
+    const { identifier, password, nuevaPassword, codigo, email } = req.body;
     const valor = String(identifier || "").trim();
     const nuevaClave = String(nuevaPassword || "").trim();
+    const requiereCodigo = Boolean(codigo || email);
 
-    if (!valor || !password || !nuevaClave) {
-      return res.status(400).json({ error: "Debes indicar usuario/email, contraseña actual y nueva contraseña." });
+    if (!valor || !nuevaClave) {
+      return res.status(400).json({ error: "Debes indicar usuario/email y la nueva contraseña." });
     }
 
     if (nuevaClave.length < 6) {
@@ -227,9 +228,21 @@ export async function resetPassword(req, res) {
       return res.status(404).json({ error: "Usuario no encontrado." });
     }
 
-    const coincide = await bcrypt.compare(String(password), usuario.passwordHash);
-    if (!coincide) {
-      return res.status(401).json({ error: "La contraseña actual no es correcta." });
+    const emailDestino = String(email || usuario.email || "").trim().toLowerCase();
+    if (requiereCodigo) {
+      const clave = confirmacionesPendientes.get(`reset:${usuario._id}:${emailDestino}`);
+      if (!clave || String(clave.codigo) !== String(codigo) || Date.now() > clave.expiresAt) {
+        return res.status(401).json({ error: "El código de confirmación es inválido o expiró." });
+      }
+    } else {
+      if (!password || !String(password).trim()) {
+        return res.status(400).json({ error: "Debes ingresar tu contraseña actual." });
+      }
+
+      const coincide = await bcrypt.compare(String(password), usuario.passwordHash);
+      if (!coincide) {
+        return res.status(401).json({ error: "La contraseña actual no es correcta." });
+      }
     }
 
     const passwordHash = await bcrypt.hash(nuevaClave, 10);
@@ -241,6 +254,10 @@ export async function resetPassword(req, res) {
       }
     } else {
       await Usuario.findByIdAndUpdate(usuario._id, { passwordHash });
+    }
+
+    if (requiereCodigo) {
+      confirmacionesPendientes.delete(`reset:${usuario._id}:${emailDestino}`);
     }
 
     const token = jwt.sign(
@@ -257,6 +274,51 @@ export async function resetPassword(req, res) {
     });
   } catch (err) {
     res.status(500).json({ error: "No se pudo restablecer la contraseña." });
+  }
+}
+
+export async function solicitarCodigoReset(req, res) {
+  try {
+    const { identifier, email } = req.body;
+    const valor = String(identifier || "").trim();
+    if (!valor) {
+      return res.status(400).json({ error: "Debes indicar tu usuario o email." });
+    }
+
+    let usuario;
+    if (getDbMode() === "fallback") {
+      usuario = await findUsuarioByLogin(valor);
+    } else {
+      usuario = await Usuario.findOne({
+        $or: [{ email: valor.toLowerCase() }, { username: valor.toLowerCase() }],
+      });
+    }
+
+    if (!usuario) {
+      return res.status(404).json({ error: "Usuario no encontrado." });
+    }
+
+    const destino = String(email || usuario.email || "").trim().toLowerCase();
+    if (!destino) {
+      return res.status(400).json({ error: "No hay un correo asociado para enviar el código." });
+    }
+
+    const codigo = String(Math.floor(100000 + Math.random() * 900000));
+    confirmacionesPendientes.set(`reset:${usuario._id}:${destino}`, {
+      codigo,
+      userId: usuario._id,
+      email: destino,
+      expiresAt: Date.now() + 10 * 60 * 1000,
+    });
+
+    return res.json({
+      ok: true,
+      codigo,
+      email: destino,
+      message: "Código de verificación generado.",
+    });
+  } catch (err) {
+    res.status(500).json({ error: "No se pudo generar el código de verificación." });
   }
 }
 

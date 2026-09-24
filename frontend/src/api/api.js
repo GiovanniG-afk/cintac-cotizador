@@ -48,6 +48,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  solicitarCodigoReset: (payload) =>
+    solicitar("/usuarios/solicitar-codigo-reset", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   solicitarConfirmacionPerfil: (payload) =>
     solicitar("/usuarios/solicitar-confirmacion", {
       method: "POST",

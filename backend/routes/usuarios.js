@@ -9,6 +9,7 @@ import {
   resetPassword,
   solicitarConfirmacion,
   confirmarPerfil,
+  solicitarCodigoReset,
 } from "../controllers/usuarioController.js";
 
 const router = Router();
@@ -16,6 +17,7 @@ const router = Router();
 router.post("/registro", registrar);
 router.post("/login", login);
 router.post("/reset-password", resetPassword);
+router.post("/solicitar-codigo-reset", solicitarCodigoReset);
 router.post("/solicitar-confirmacion", requireAuth, solicitarConfirmacion);
 router.post("/confirmar-configuracion", requireAuth, confirmarPerfil);
 router.patch("/me/password", requireAuth, actualizarPassword);
