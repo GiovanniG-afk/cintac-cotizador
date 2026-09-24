@@ -5,12 +5,21 @@ import {
   login,
   listarUsuarios,
   actualizarRol,
+  actualizarPassword,
+  resetPassword,
+  solicitarConfirmacion,
+  confirmarPerfil,
 } from "../controllers/usuarioController.js";
 
 const router = Router();
 
 router.post("/registro", registrar);
 router.post("/login", login);
+router.post("/reset-password", resetPassword);
+router.post("/solicitar-confirmacion", requireAuth, solicitarConfirmacion);
+router.post("/confirmar-configuracion", requireAuth, confirmarPerfil);
+router.patch("/me/password", requireAuth, actualizarPassword);
+router.patch("/:id/password", requireAuth, actualizarPassword);
 
 // HDU-06: solo el administrador gestiona perfiles
 router.get("/", requireAuth, requireRol("administrador"), listarUsuarios);

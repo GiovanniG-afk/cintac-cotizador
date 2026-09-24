@@ -17,6 +17,7 @@ app.use(express.json());
 app.use(async (req, res, next) => {
   try {
     await conectarDB();
+    await ensureDefaultAdmin();
     next();
   } catch (err) {
     res.status(500).json({ error: "No se pudo conectar a la base de datos." });

@@ -10,6 +10,28 @@
   --text: #1a1a1a;
   --border: #e0d9d3;
   --soft-bg: #f7f5f4;
+  --card-bg: #ffffff;
+  --card-alt: #f7f5f4;
+  --input-bg: #ffffff;
+  --muted: #555555;
+  --success: #2e7d32;
+  --danger: #d32f2f;
+}
+
+body[data-theme="dark"] {
+  --dark-orange: #ff9f43;
+  --cayenne: #ff7f32;
+  --flame: #ff6d1d;
+  --white: #0f172a;
+  --text: #e5edf7;
+  --border: #314a66;
+  --soft-bg: #071422;
+  --card-bg: #0f1d2d;
+  --card-alt: #132536;
+  --input-bg: #14273c;
+  --muted: #a7b9cf;
+  --success: #34d399;
+  --danger: #f87171;
 }
 
 html {
@@ -23,6 +45,22 @@ body {
   font-family: Tahoma, Verdana, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  transition: background 0.2s ease, color 0.2s ease;
+  color-scheme: light;
+}
+
+body[data-theme="dark"] {
+  color-scheme: dark;
+  background: var(--soft-bg);
+}
+
+::selection {
+  background: rgba(229, 83, 3, 0.22);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #9aa4b2;
 }
 
 #root {
@@ -57,7 +95,7 @@ input, select {
   padding: 9px 10px;
   font-family: inherit;
   font-size: 14px;
-  background: var(--white);
+  background: var(--input-bg);
   color: var(--text);
 }
 
@@ -65,7 +103,7 @@ label {
   display: block;
   font-size: 13px;
   margin: 10px 0 4px;
-  color: #555;
+  color: var(--muted);
 }
 
 .btn-primario {
@@ -105,19 +143,52 @@ label {
   padding: 10px 18px;
   font-weight: bold;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .btn-secundario:hover {
   background: var(--cayenne);
+  box-shadow: 0 8px 20px rgba(229, 83, 3, 0.18);
+}
+
+.btn-secondary {
+  background: rgba(255, 153, 77, 0.18);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.btn-config {
+  min-width: 110px;
 }
 
 .tarjeta {
-  background: var(--white);
+  background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 10px;
   padding: 18px;
   box-shadow: 0 2px 6px rgba(229, 83, 3, 0.06);
+}
+
+.navbar-shell {
+  background: var(--card-bg);
+  color: var(--text);
+}
+
+.nav-link {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav-link:hover {
+  color: var(--cayenne);
+}
+
+.config-panel {
+  background: var(--card-alt);
+  border-color: var(--border);
+  color: var(--text);
 }
 
 th {
@@ -129,6 +200,11 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+}
+
+select {
+  background: var(--input-bg);
+  color: var(--text);
 }
 
 td, th {

@@ -8,7 +8,7 @@ export function requireAuth(req, res, next) {
 
   const token = header.split(" ")[1];
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET || "cintac-dev-secret");
     req.usuario = payload;
     next();
   } catch (err) {

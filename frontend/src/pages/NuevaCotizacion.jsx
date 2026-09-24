@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { api } from "../api/api.js";
-import { exportarCotizacionAPDF } from "../utils/exportPdf.js";
+import { exportarCotizacion } from "../utils/exportPdf.js";
 
 const TIPOS_PRODUCTO = [
   { valor: "plancha", texto: "Plancha de acero" },
@@ -29,6 +29,7 @@ export default function NuevaCotizacion() {
   const [advertencia, setAdvertencia] = useState("");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [tipoExportacion, setTipoExportacion] = useState("pdf");
 
   function actualizarCampo(campo, valor) {
     setForm((prev) => ({ ...prev, [campo]: valor }));
@@ -77,7 +78,7 @@ export default function NuevaCotizacion() {
     try {
       const finalizada = await api.finalizarCotizacion(cotizacion._id);
       setCotizacion(finalizada);
-      exportarCotizacionAPDF(finalizada);
+      exportarCotizacion(finalizada, tipoExportacion);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -280,11 +281,25 @@ export default function NuevaCotizacion() {
         <section className="tarjeta mt-6">
           <h3 className="text-lg">3. Finalizar y exportar</h3>
           <p className="mt-2 text-acero-claro">
-            Al finalizar podrás descargar el detalle de la cotización en PDF para compartirlo.
+            Elige el formato antes de exportar la cotización final.
           </p>
-          <button onClick={manejarFinalizarYExportar} disabled={cargando} className="btn-primario mt-4">
-            {cotizacion.estado === "finalizada" ? "Descargar PDF" : "Finalizar y descargar PDF"}
-          </button>
+          <div className="mt-4 flex flex-wrap items-end gap-3">
+            <div>
+              <label htmlFor="tipoExportacion">Formato</label>
+              <select
+                id="tipoExportacion"
+                value={tipoExportacion}
+                onChange={(e) => setTipoExportacion(e.target.value)}
+                className="mt-1"
+              >
+                <option value="pdf">PDF</option>
+                <option value="excel">Excel</option>
+              </select>
+            </div>
+            <button onClick={manejarFinalizarYExportar} disabled={cargando} className="btn-primario">
+              {cotizacion.estado === "finalizada" ? `Descargar ${tipoExportacion.toUpperCase()}` : `Finalizar y descargar ${tipoExportacion.toUpperCase()}`}
+            </button>
+          </div>
         </section>
       )}
     </div>
