@@ -294,6 +294,7 @@ export default function NuevaCotizacion() {
               >
                 <option value="pdf">PDF</option>
                 <option value="excel">Excel</option>
+                <option value="word">Word</option>
               </select>
             </div>
             <button onClick={manejarFinalizarYExportar} disabled={cargando} className="btn-primario">

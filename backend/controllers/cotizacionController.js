@@ -131,25 +131,35 @@ export async function calcularCotizacion(req, res) {
 export async function listarCotizaciones(req, res) {
   const { proveedor, producto } = req.query;
   const filtro = {};
+  const esAdmin = req.usuario?.rol === "administrador";
+
   if (proveedor) filtro.proveedor = String(proveedor);
   if (producto) filtro.producto = String(producto);
+  if (!esAdmin) filtro.creadoPor = req.usuario?.id;
 
   if (getDbMode() === "fallback") {
-    return res.json(await listarCotizacionesMemory(filtro));
+    const lista = await listarCotizacionesMemory(filtro);
+    const filtrada = esAdmin ? lista : lista.filter((cotizacion) => String(cotizacion.creadoPor || "") === String(req.usuario?.id || ""));
+    return res.json(filtrada);
   }
 
   if (proveedor) filtro.proveedor = new RegExp(proveedor, "i");
   if (producto) filtro.producto = new RegExp(producto, "i");
 
-  const cotizaciones = await Cotizacion.find(filtro).sort({ createdAt: -1 });
+  const cotizaciones = await Cotizacion.find(esAdmin ? filtro : { ...filtro, creadoPor: req.usuario.id }).sort({ createdAt: -1 });
   res.json(cotizaciones);
 }
 
 export async function obtenerCotizacion(req, res) {
+  const esAdmin = req.usuario?.rol === "administrador";
+
   if (getDbMode() === "fallback") {
     const cotizacion = await buscarCotizacionPorId(req.params.id);
     if (!cotizacion) {
       return res.status(404).json({ error: "Cotización no encontrada." });
+    }
+    if (!esAdmin && String(cotizacion.creadoPor || "") !== String(req.usuario?.id || "")) {
+      return res.status(403).json({ error: "No tienes permisos para ver esta cotización." });
     }
     return res.json(cotizacion);
   }
@@ -158,12 +168,16 @@ export async function obtenerCotizacion(req, res) {
   if (!cotizacion) {
     return res.status(404).json({ error: "Cotización no encontrada." });
   }
+  if (!esAdmin && String(cotizacion.creadoPor || "") !== String(req.usuario?.id || "")) {
+    return res.status(403).json({ error: "No tienes permisos para ver esta cotización." });
+  }
   res.json(cotizacion);
 }
 
 // HDU-03 / RF-03: comparar dos o más cotizaciones del mismo producto
 export async function compararCotizaciones(req, res) {
   const { ids } = req.query;
+  const esAdmin = req.usuario?.rol === "administrador";
   if (!ids) {
     return res.status(400).json({ error: "Debes indicar al menos dos IDs para comparar." });
   }
@@ -173,19 +187,26 @@ export async function compararCotizaciones(req, res) {
   }
 
   if (getDbMode() === "fallback") {
-    return res.json(await listarCotizacionesPorIdsMemory(listaIds));
+    const lista = await listarCotizacionesPorIdsMemory(listaIds);
+    const visibles = esAdmin ? lista : lista.filter((cotizacion) => String(cotizacion.creadoPor || "") === String(req.usuario?.id || ""));
+    return res.json(visibles);
   }
 
-  const cotizaciones = await Cotizacion.find({ _id: { $in: listaIds } });
+  const cotizaciones = await Cotizacion.find({ _id: { $in: listaIds }, ...(esAdmin ? {} : { creadoPor: req.usuario.id }) });
   res.json(cotizaciones);
 }
 
 // HDU-05 / RF-05: marcar como finalizada (requisito previo para exportar)
 export async function finalizarCotizacion(req, res) {
+  const esAdmin = req.usuario?.rol === "administrador";
+
   if (getDbMode() === "fallback") {
     const cotizacion = await buscarCotizacionPorId(req.params.id);
     if (!cotizacion) {
       return res.status(404).json({ error: "Cotización no encontrada." });
+    }
+    if (!esAdmin && String(cotizacion.creadoPor || "") !== String(req.usuario?.id || "")) {
+      return res.status(403).json({ error: "No tienes permisos para modificar esta cotización." });
     }
     if (cotizacion.estado !== "calculada") {
       return res
@@ -199,6 +220,9 @@ export async function finalizarCotizacion(req, res) {
   const cotizacion = await Cotizacion.findById(req.params.id);
   if (!cotizacion) {
     return res.status(404).json({ error: "Cotización no encontrada." });
+  }
+  if (!esAdmin && String(cotizacion.creadoPor || "") !== String(req.usuario?.id || "")) {
+    return res.status(403).json({ error: "No tienes permisos para modificar esta cotización." });
   }
   if (cotizacion.estado !== "calculada") {
     return res

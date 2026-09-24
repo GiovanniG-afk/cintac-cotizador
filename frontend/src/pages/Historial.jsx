@@ -22,7 +22,12 @@ export default function Historial() {
 
   useEffect(() => {
     buscar();
-  }, []);
+    const id = window.setInterval(() => {
+      buscar();
+    }, 30000);
+
+    return () => window.clearInterval(id);
+  }, [proveedor, producto]);
 
   function alternarSeleccion(id) {
     setSeleccionadas((prev) =>

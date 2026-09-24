@@ -31,6 +31,22 @@ function obtenerFilasCotizacion(cotizacion) {
   ];
 }
 
+function crearHtmlDocumentoCotizacion(cotizacion) {
+  const filas = obtenerFilasCotizacion(cotizacion).map(([label, value]) => `<tr><td>${label}</td><td>${String(value)}</td></tr>`).join("");
+  return `
+    <html>
+      <head><meta charset="utf-8" /></head>
+      <body style="font-family: Arial, sans-serif; color: #0f172a; margin: 24px;">
+        <div style="background: #f97316; color: white; padding: 18px 24px; border-radius: 12px; font-weight: 900; font-size: 28px; letter-spacing: 1px; text-align: center;">CINTAC</div>
+        <h2 style="margin: 20px 0 10px; color: #f97316;">Cotización de Importación</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 12px;">
+          <tbody>${filas}</tbody>
+        </table>
+      </body>
+    </html>
+  `;
+}
+
 export function exportarCotizacion(cotizacion, tipo = "pdf") {
   const nombreBase = `cotizacion-${(cotizacion.producto || "detalle").replace(/\s+/g, "-")}-${cotizacion._id || "sin-id"}`;
 
@@ -43,14 +59,29 @@ export function exportarCotizacion(cotizacion, tipo = "pdf") {
     return;
   }
 
+  if (tipo === "word") {
+    const html = crearHtmlDocumentoCotizacion(cotizacion);
+    descargarBlob(html, `${nombreBase}.doc`, "application/msword;charset=utf-8;");
+    return;
+  }
+
   const doc = new jsPDF();
   const clp = (n) => `$${Number(n || 0).toLocaleString("es-CL")} CLP`;
 
-  doc.setFontSize(16);
-  doc.text("Cotización de Importación — Cintac", 14, 18);
+  doc.setFillColor(249, 115, 22);
+  doc.rect(0, 0, 220, 28, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(26);
+  doc.setFont("helvetica", "bold");
+  doc.text("CINTAC", 14, 18);
+  doc.setTextColor(15, 23, 42);
 
+  doc.setFontSize(16);
+  doc.text("Cotización de Importación", 14, 42);
+
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
-  let y = 32;
+  let y = 56;
   const linea = (etiqueta, valor) => {
     doc.text(`${etiqueta}: ${valor ?? "-"}`, 14, y);
     y += 8;
