@@ -130,13 +130,11 @@ export default function Navbar() {
     setOkConfig("");
 
     try {
-      const respuesta = await api.solicitarConfirmacionPerfil({ userId: usuario.id, email: email || usuario.email || "" });
-      setCodigoEnviado(String(respuesta.codigo));
-      setOkConfig(t.codigoEnviado);
-      return respuesta.codigo;
+      await api.solicitarConfirmacionPerfil({ userId: usuario.id, email: email || usuario.email || "" });
+      setCodigoEnviado("sent");
+      setOkConfig("Se envió un código de confirmación a tu correo.");
     } catch (err) {
       setErrorConfig(err.message);
-      return "";
     }
   }
 
@@ -145,30 +143,39 @@ export default function Navbar() {
     setErrorConfig("");
     setOkConfig("");
 
-    if (!codigoConfirmacion.trim()) {
+    const quiereCambiarPassword = Boolean(passwordActual || passwordNueva);
+    if (quiereCambiarPassword && (!passwordNueva || passwordNueva.length < 6)) {
+      setErrorConfig("La nueva contraseña debe tener al menos 6 caracteres.");
+      return;
+    }
+
+    if (quiereCambiarPassword && !passwordActual && !codigoConfirmacion.trim()) {
+      setErrorConfig("Para cambiar la contraseña sin la actual, confirma por correo primero.");
+      return;
+    }
+
+    if (quiereCambiarPassword && passwordActual && !codigoConfirmacion.trim()) {
+      setErrorConfig("Debes ingresar el código de confirmación que recibiste por correo.");
+      return;
+    }
+
+    if (!codigoConfirmacion.trim() && (username !== usuario.username || email !== usuario.email)) {
       setErrorConfig("Debes ingresar el código de confirmación que recibió por correo.");
       return;
     }
 
     try {
-      const codigoGenerado = codigoEnviado || "";
-      if (codigoGenerado && codigoGenerado !== codigoConfirmacion.trim()) {
-        setErrorConfig("El código de confirmación no coincide.");
-        return;
-      }
-
-      if (passwordNueva && passwordNueva.length < 6) {
-        setErrorConfig("La nueva contraseña debe tener al menos 6 caracteres.");
-        return;
-      }
-
-      if (passwordActual && !passwordNueva) {
-        setErrorConfig("Si cambias contraseña, debes indicar la nueva contraseña.");
-        return;
-      }
-
-      if (passwordActual || passwordNueva) {
+      if (quiereCambiarPassword && passwordActual && passwordNueva) {
         await api.cambiarMiPassword({ password: passwordActual, nuevaPassword: passwordNueva });
+      }
+
+      if (quiereCambiarPassword && !passwordActual && passwordNueva) {
+        await api.reestablecerPassword({
+          identifier: usuario.username,
+          email: email.trim() || usuario.email,
+          codigo: codigoConfirmacion.trim(),
+          nuevaPassword: passwordNueva,
+        });
       }
 
       if (username && username !== usuario.username) {
@@ -306,7 +313,7 @@ export default function Navbar() {
               </div>
 
               {codigoEnviado && (
-                <p className="m-0 text-sm text-amber-500">{t.codigoEnviado} Código: <strong>{codigoEnviado}</strong></p>
+                <p className="m-0 text-sm text-amber-500">{t.codigoEnviado}</p>
               )}
               {errorConfig && <p className="m-0 text-sm text-red-500">{errorConfig}</p>}
               {okConfig && <p className="m-0 text-sm text-green-500">{okConfig}</p>}

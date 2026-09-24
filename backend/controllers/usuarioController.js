@@ -203,7 +203,7 @@ export async function actualizarPassword(req, res) {
 export async function resetPassword(req, res) {
   try {
     const { identifier, password, nuevaPassword, codigo, email } = req.body;
-    const valor = String(identifier || "").trim();
+    const valor = String(identifier || email || "").trim();
     const nuevaClave = String(nuevaPassword || "").trim();
     const requiereCodigo = Boolean(codigo || email);
 
@@ -225,7 +225,7 @@ export async function resetPassword(req, res) {
     }
 
     if (!usuario) {
-      return res.status(404).json({ error: "Usuario no encontrado." });
+      return res.status(404).json({ error: "No tienes cuenta con nosotros." });
     }
 
     const emailDestino = String(email || usuario.email || "").trim().toLowerCase();
@@ -280,9 +280,9 @@ export async function resetPassword(req, res) {
 export async function solicitarCodigoReset(req, res) {
   try {
     const { identifier, email } = req.body;
-    const valor = String(identifier || "").trim();
+    const valor = String(identifier || email || "").trim();
     if (!valor) {
-      return res.status(400).json({ error: "Debes indicar tu usuario o email." });
+      return res.status(400).json({ error: "Debes indicar tu correo electrónico." });
     }
 
     let usuario;
@@ -295,7 +295,7 @@ export async function solicitarCodigoReset(req, res) {
     }
 
     if (!usuario) {
-      return res.status(404).json({ error: "Usuario no encontrado." });
+      return res.status(404).json({ error: "No tienes cuenta con nosotros." });
     }
 
     const destino = String(email || usuario.email || "").trim().toLowerCase();
@@ -313,9 +313,8 @@ export async function solicitarCodigoReset(req, res) {
 
     return res.json({
       ok: true,
-      codigo,
       email: destino,
-      message: "Código de verificación generado.",
+      message: "Código de verificación enviado a tu correo.",
     });
   } catch (err) {
     res.status(500).json({ error: "No se pudo generar el código de verificación." });

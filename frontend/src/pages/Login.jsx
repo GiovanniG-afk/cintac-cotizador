@@ -149,7 +149,6 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(localStorage.getItem("cintac-remember") === "true");
   const [intentosFallidos, setIntentosFallidos] = useState(Number(localStorage.getItem("cintac-login-fails") || 0));
   const [mostrarCambioPassword, setMostrarCambioPassword] = useState(false);
-  const [resetIdentifier, setResetIdentifier] = useState("");
   const [resetEmail, setResetEmail] = useState("");
   const [resetCodigo, setResetCodigo] = useState("");
   const [resetPassword, setResetPassword] = useState("");
@@ -186,7 +185,6 @@ export default function Login() {
     localStorage.removeItem("cintac-login-fails");
     setIntentosFallidos(0);
     setMostrarCambioPassword(false);
-    setResetIdentifier("");
     setResetEmail("");
     setResetCodigo("");
     setResetPassword("");
@@ -236,16 +234,18 @@ export default function Login() {
     setError("");
     setResetOk("");
 
+    const correoDestino = (resetEmail || email || "").trim();
+    if (!correoDestino) {
+      setError("Debes ingresar tu correo electrónico.");
+      return;
+    }
+
     try {
-      const usuarioIdentificador = resetIdentifier || identifier;
-      const respuesta = await api.solicitarCodigoReset({
-        identifier: usuarioIdentificador,
-        email: resetEmail || email || "",
-      });
-      setCodigoGenerado(String(respuesta.codigo));
-      setResetOk(`Código enviado a ${respuesta.email}.`);
+      await api.solicitarCodigoReset({ email: correoDestino });
+      setCodigoGenerado("enviado");
+      setResetOk("Se envió un código de confirmación a tu correo.");
     } catch (err) {
-      setError(err.message);
+      setError(err.message === "Usuario no encontrado." ? "No tienes cuenta con nosotros." : err.message);
     }
   }
 
@@ -254,10 +254,9 @@ export default function Login() {
     setError("");
     setResetOk("");
     try {
-      const usuarioIdentificador = resetIdentifier || identifier;
+      const correoDestino = (resetEmail || email || "").trim();
       const { token, usuario } = await api.reestablecerPassword({
-        identifier: usuarioIdentificador,
-        email: resetEmail || email || "",
+        email: correoDestino,
         codigo: resetCodigo,
         nuevaPassword: resetNuevaPassword,
       });
@@ -267,7 +266,7 @@ export default function Login() {
       setMostrarCambioPassword(false);
       navigate("/");
     } catch (err) {
-      setError(err.message);
+      setError(err.message === "Usuario no encontrado." ? "No tienes cuenta con nosotros." : err.message);
     }
   }
 
@@ -384,21 +383,11 @@ export default function Login() {
           <h3 className="mb-2 text-left text-base">{t.cambiarPassword}</h3>
           <p className="mb-3 text-left text-xs text-slate-300">{t.descripcionReset}</p>
           <div>
-            <label htmlFor="resetIdentifier">{t.correo}</label>
-            <input
-              id="resetIdentifier"
-              type="text"
-              required
-              value={resetIdentifier || identifier}
-              onChange={(e) => setResetIdentifier(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-          <div>
             <label htmlFor="resetEmail">{t.correoRegistro}</label>
             <input
               id="resetEmail"
               type="email"
+              required
               value={resetEmail || email || ""}
               onChange={(e) => setResetEmail(e.target.value)}
               className="mt-1"
