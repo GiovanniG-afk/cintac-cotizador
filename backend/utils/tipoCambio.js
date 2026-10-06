@@ -1,12 +1,10 @@
 import fetch from "node-fetch";
 import { TASA_FOB } from "./cotizadorConfig.js";
 
-// El FOB vale lo mismo que el cambio de dólar (1 dólar = TASA_FOB CLP)
-// Por defecto usamos TASA_FOB, pero también consultamos mindicador.cl
 const MINDICADOR_URL = "https://mindicador.cl/api/dolar";
 
 let cache = { valor: null, fecha: null, obtenidoEn: 0 };
-const CACHE_MS = 1000 * 60 * 30; // 30 minutos
+const CACHE_MS = 1000 * 60 * 30;
 
 export async function obtenerTipoCambioUSD() {
   const ahora = Date.now();
@@ -33,7 +31,7 @@ export async function obtenerTipoCambioUSD() {
     return cache;
   } catch (error) {
     console.warn(
-      `No se pudo obtener tipo de cambio de mindicador.cl, usando TASA_FOB: ${TASA_FOB}`
+      `No se pudo obtener el tipo de cambio de mindicador.cl; usando TASA_FOB: ${TASA_FOB}`
     );
     cache = {
       valor: TASA_FOB,

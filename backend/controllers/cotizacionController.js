@@ -8,8 +8,11 @@ import {
   listarCotizacionesPorIdsMemory,
   guardarCotizacionMemory,
 } from "../config/fallbackStore.js";
+import {
+  obtenerCostoPuerto,
+  validarToneladasPorContenedor,
+} from "../utils/cotizadorConfig.js";
 
-// HDU-01 / RF-01
 export async function crearCotizacion(req, res) {
   try {
     const {
@@ -24,13 +27,24 @@ export async function crearCotizacion(req, res) {
       seguro,
       otrosGastos,
       condicionPago,
+      tipoContenedor,
+      puerto,
+      toneladas,
     } = req.body;
 
-    const camposObligatorios = { proveedor, producto, tipoProducto, paisOrigen, cantidad, precioFOB };
-    const faltante = Object.entries(camposObligatorios).find(([, v]) => v === undefined || v === "");
+    const camposObligatorios = { proveedor, producto, tipoProducto, paisOrigen, cantidad, precioFOB, tipoContenedor, puerto, toneladas };
+    const faltante = Object.entries(camposObligatorios).find(([, v]) => v === undefined || v === "" || v === null);
     if (faltante) {
       return res.status(400).json({ error: `Falta completar el campo: ${faltante[0]}` });
     }
+
+    if (!validarToneladasPorContenedor(tipoContenedor, toneladas)) {
+      return res.status(400).json({
+        error: `La tonelaje para un contenedor ${tipoContenedor} debe estar entre ${tipoContenedor === "20" ? "20 y 28" : "26 y 29"} toneladas.`,
+      });
+    }
+
+    const costoPuerto = obtenerCostoPuerto(puerto, tipoContenedor);
 
     if (getDbMode() === "fallback") {
       const cotizacion = await crearCotizacionMemory({
@@ -41,9 +55,13 @@ export async function crearCotizacion(req, res) {
         cantidad,
         precioFOB,
         moneda,
+        tipoContenedor,
+        puerto,
+        toneladas,
         flete,
         seguro,
         otrosGastos,
+        costoPuerto,
         condicionPago,
         creadoPor: req.usuario?.id,
         estado: "en_proceso",
@@ -59,9 +77,13 @@ export async function crearCotizacion(req, res) {
       cantidad,
       precioFOB,
       moneda,
+      tipoContenedor,
+      puerto,
+      toneladas,
       flete,
       seguro,
       otrosGastos,
+      costoPuerto,
       condicionPago,
       creadoPor: req.usuario?.id,
     });
@@ -72,7 +94,6 @@ export async function crearCotizacion(req, res) {
   }
 }
 
-// HDU-02 / RF-02 / RF-07
 export async function calcularCotizacion(req, res) {
   try {
     if (getDbMode() === "fallback") {
@@ -87,6 +108,7 @@ export async function calcularCotizacion(req, res) {
         tipoCambioUsado: resultado.tipoCambioUsado,
         fechaTipoCambio: resultado.fechaTipoCambio,
         arancelPctUsado: resultado.arancelPctUsado,
+        costoPuerto: resultado.costoPuerto,
         costoTotalCLP: resultado.costoTotalCLP,
         precioUnitarioFinalCLP: resultado.precioUnitarioFinalCLP,
         estado: "calculada",
@@ -107,10 +129,10 @@ export async function calcularCotizacion(req, res) {
     }
 
     const resultado = await calcularCostoImportacion(cotizacion);
-
     cotizacion.tipoCambioUsado = resultado.tipoCambioUsado;
     cotizacion.fechaTipoCambio = resultado.fechaTipoCambio;
     cotizacion.arancelPctUsado = resultado.arancelPctUsado;
+    cotizacion.costoPuerto = resultado.costoPuerto;
     cotizacion.costoTotalCLP = resultado.costoTotalCLP;
     cotizacion.precioUnitarioFinalCLP = resultado.precioUnitarioFinalCLP;
     cotizacion.estado = "calculada";
@@ -127,7 +149,6 @@ export async function calcularCotizacion(req, res) {
   }
 }
 
-// HDU-04 / RF-04: historial filtrable por proveedor y producto
 export async function listarCotizaciones(req, res) {
   const { proveedor, producto } = req.query;
   const filtro = {};
@@ -174,7 +195,6 @@ export async function obtenerCotizacion(req, res) {
   res.json(cotizacion);
 }
 
-// HDU-03 / RF-03: comparar dos o más cotizaciones del mismo producto
 export async function compararCotizaciones(req, res) {
   const { ids } = req.query;
   const esAdmin = req.usuario?.rol === "administrador";
@@ -196,7 +216,6 @@ export async function compararCotizaciones(req, res) {
   res.json(cotizaciones);
 }
 
-// HDU-05 / RF-05: marcar como finalizada (requisito previo para exportar)
 export async function finalizarCotizacion(req, res) {
   const esAdmin = req.usuario?.rol === "administrador";
 
@@ -209,9 +228,7 @@ export async function finalizarCotizacion(req, res) {
       return res.status(403).json({ error: "No tienes permisos para modificar esta cotización." });
     }
     if (cotizacion.estado !== "calculada") {
-      return res
-        .status(400)
-        .json({ error: "Debes calcular la cotización antes de finalizarla." });
+      return res.status(400).json({ error: "Debes calcular la cotización antes de finalizarla." });
     }
     const finalizada = await guardarCotizacionMemory({ ...cotizacion, estado: "finalizada" });
     return res.json(finalizada);
@@ -225,9 +242,7 @@ export async function finalizarCotizacion(req, res) {
     return res.status(403).json({ error: "No tienes permisos para modificar esta cotización." });
   }
   if (cotizacion.estado !== "calculada") {
-    return res
-      .status(400)
-      .json({ error: "Debes calcular la cotización antes de finalizarla." });
+    return res.status(400).json({ error: "Debes calcular la cotización antes de finalizarla." });
   }
   cotizacion.estado = "finalizada";
   await cotizacion.save();

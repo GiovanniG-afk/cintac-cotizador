@@ -42,7 +42,11 @@ export function obtenerCapacidadContenedor(tipoContenedor) {
 
 export function validarToneladasPorContenedor(tipoContenedor, toneladas) {
   const contenedor = obtenerCapacidadContenedor(tipoContenedor);
-  return toneladas >= contenedor.capacidadMinToneladas && toneladas <= contenedor.capacidadMaxToneladas;
+  const valor = Number(toneladas);
+  if (!Number.isFinite(valor)) {
+    return false;
+  }
+  return valor >= contenedor.capacidadMinToneladas && valor <= contenedor.capacidadMaxToneladas;
 }
 
 export function obtenerPuertosDisponibles() {

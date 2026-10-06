@@ -13,12 +13,15 @@ const cotizacionSchema = new mongoose.Schema(
     cantidad: { type: Number, required: true, min: 0.01 },
     precioFOB: { type: Number, required: true, min: 0 },
     moneda: { type: String, enum: ["USD", "CLP"], default: "USD" },
+    tipoContenedor: { type: String, enum: ["20", "40"], default: "20" },
+    puerto: { type: String, trim: true },
+    toneladas: { type: Number, min: 0 },
     flete: { type: Number, default: 0, min: 0 },
     seguro: { type: Number, default: 0, min: 0 },
     otrosGastos: { type: Number, default: 0, min: 0 },
+    costoPuerto: { type: Number, default: 0, min: 0 },
     condicionPago: { type: String, trim: true },
 
-    // Campos calculados por el sistema (RF-02 / RF-07)
     tipoCambioUsado: { type: Number },
     fechaTipoCambio: { type: Date },
     arancelPctUsado: { type: Number },

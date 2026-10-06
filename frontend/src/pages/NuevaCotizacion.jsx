@@ -9,6 +9,19 @@ const TIPOS_PRODUCTO = [
   { valor: "bobina", texto: "Bobina de acero" },
 ];
 
+const PUERTOS = [
+  "Shanghái",
+  "Hong Kong",
+  "Rotterdam",
+  "Singapur",
+  "Los Angeles",
+  "Nueva York",
+  "Busan",
+  "Tokio",
+  "Bangkok",
+  "Dubai",
+];
+
 const CAMPOS_INICIALES = {
   proveedor: "",
   producto: "",
@@ -17,6 +30,9 @@ const CAMPOS_INICIALES = {
   cantidad: "",
   precioFOB: "",
   moneda: "USD",
+  tipoContenedor: "20",
+  puerto: "Shanghái",
+  toneladas: "20",
   flete: "",
   seguro: "",
   otrosGastos: "",
@@ -35,18 +51,43 @@ export default function NuevaCotizacion() {
     setForm((prev) => ({ ...prev, [campo]: valor }));
   }
 
+  function validarToneladas() {
+    const toneladas = Number(form.toneladas);
+    if (!Number.isFinite(toneladas)) return "Debes ingresar una cantidad válida de toneladas.";
+
+    if (form.tipoContenedor === "20" && (toneladas < 20 || toneladas > 28)) {
+      return "El contenedor 20’ solo admite entre 20 y 28 toneladas.";
+    }
+
+    if (form.tipoContenedor === "40" && (toneladas < 26 || toneladas > 29)) {
+      return "El contenedor 40’ solo admite entre 26 y 29 toneladas.";
+    }
+
+    return "";
+  }
+
   async function manejarRegistro(e) {
     e.preventDefault();
+    if (cargando) return;
     setError("");
+
+    const errorTonelaje = validarToneladas();
+    if (errorTonelaje) {
+      setError(errorTonelaje);
+      return;
+    }
+
     setCargando(true);
     try {
       const nueva = await api.crearCotizacion({
         ...form,
         cantidad: Number(form.cantidad),
         precioFOB: Number(form.precioFOB),
+        toneladas: Number(form.toneladas),
         flete: Number(form.flete || 0),
         seguro: Number(form.seguro || 0),
         otrosGastos: Number(form.otrosGastos || 0),
+        condicionPago: form.condicionPago?.trim() || "",
       });
       setCotizacion(nueva);
     } catch (err) {
@@ -57,6 +98,7 @@ export default function NuevaCotizacion() {
   }
 
   async function manejarCalculo() {
+    if (cargando || !cotizacion) return;
     setError("");
     setCargando(true);
     try {
@@ -73,6 +115,7 @@ export default function NuevaCotizacion() {
   }
 
   async function manejarFinalizarYExportar() {
+    if (cargando || !cotizacion) return;
     setError("");
     setCargando(true);
     try {
@@ -90,7 +133,7 @@ export default function NuevaCotizacion() {
     <div className="mx-auto max-w-2xl px-6 py-10">
       <h2 className="text-2xl font-semibold">Nueva cotización</h2>
       <p className="mt-1 text-lg text-acero-claro">
-        Completa los tres pasos para calcular y exportar la cotización.
+        Completa los datos para calcular y exportar la cotización.
       </p>
 
       {error && (
@@ -99,7 +142,6 @@ export default function NuevaCotizacion() {
         </p>
       )}
 
-      {/* Paso 1: datos generales */}
       <section className="tarjeta mt-6">
         <h3 className="text-lg">1. Datos generales</h3>
         <form onSubmit={manejarRegistro} className="mt-4 space-y-4">
@@ -144,9 +186,7 @@ export default function NuevaCotizacion() {
                 onChange={(e) => actualizarCampo("tipoProducto", e.target.value)}
               >
                 {TIPOS_PRODUCTO.map((t) => (
-                  <option key={t.valor} value={t.valor}>
-                    {t.texto}
-                  </option>
+                  <option key={t.valor} value={t.valor}>{t.texto}</option>
                 ))}
               </select>
             </div>
@@ -170,7 +210,7 @@ export default function NuevaCotizacion() {
                 disabled={!!cotizacion}
                 value={form.condicionPago}
                 onChange={(e) => actualizarCampo("condicionPago", e.target.value)}
-                placeholder="Ej: 30 días fecha factura"
+                placeholder="Opcional"
               />
             </div>
             <div>
@@ -197,6 +237,44 @@ export default function NuevaCotizacion() {
                 <option value="USD">Dólares (USD)</option>
                 <option value="CLP">Pesos chilenos (CLP)</option>
               </select>
+            </div>
+            <div>
+              <label htmlFor="tipoContenedor">Tipo de contenedor</label>
+              <select
+                id="tipoContenedor"
+                disabled={!!cotizacion}
+                value={form.tipoContenedor}
+                onChange={(e) => actualizarCampo("tipoContenedor", e.target.value)}
+              >
+                <option value="20">20 pies</option>
+                <option value="40">40 pies</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="puerto">Puerto</label>
+              <select
+                id="puerto"
+                disabled={!!cotizacion}
+                value={form.puerto}
+                onChange={(e) => actualizarCampo("puerto", e.target.value)}
+              >
+                {PUERTOS.map((puerto) => (
+                  <option key={puerto} value={puerto}>{puerto}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="toneladas">Toneladas</label>
+              <input
+                id="toneladas"
+                type="number"
+                min="0"
+                step="0.1"
+                required
+                disabled={!!cotizacion}
+                value={form.toneladas}
+                onChange={(e) => actualizarCampo("toneladas", e.target.value)}
+              />
             </div>
             <div>
               <label htmlFor="flete">Flete internacional</label>
@@ -244,7 +322,6 @@ export default function NuevaCotizacion() {
         </form>
       </section>
 
-      {/* Paso 2: cálculo */}
       {cotizacion && (
         <section className="tarjeta mt-6">
           <h3 className="text-lg">2. Cálculo del costo total</h3>
@@ -255,8 +332,19 @@ export default function NuevaCotizacion() {
           ) : (
             <div className="mt-4 space-y-2 text-lg">
               <p>
-                Tipo de cambio usado:{" "}
-                <strong>${cotizacion.tipoCambioUsado?.toLocaleString("es-CL")} CLP</strong>
+                Tipo de cambio usado: <strong>${cotizacion.tipoCambioUsado?.toLocaleString("es-CL")} CLP</strong>
+              </p>
+              <p>
+                Puerto: <strong>{cotizacion.puerto || "-"}</strong>
+              </p>
+              <p>
+                Contenedor: <strong>{cotizacion.tipoContenedor || "-"} pies</strong>
+              </p>
+              <p>
+                Toneladas: <strong>{cotizacion.toneladas ?? "-"}</strong>
+              </p>
+              <p>
+                Costo puerto: <strong>${Number(cotizacion.costoPuerto || 0).toLocaleString("es-CL")} USD</strong>
               </p>
               <p>
                 Arancel aplicado: <strong>{(cotizacion.arancelPctUsado * 100).toFixed(1)}%</strong>
@@ -265,8 +353,7 @@ export default function NuevaCotizacion() {
                 Costo total: ${cotizacion.costoTotalCLP?.toLocaleString("es-CL")} CLP
               </p>
               <p>
-                Precio unitario final: $
-                {cotizacion.precioUnitarioFinalCLP?.toLocaleString("es-CL")} CLP
+                Precio unitario final: ${cotizacion.precioUnitarioFinalCLP?.toLocaleString("es-CL")} CLP
               </p>
             </div>
           )}
@@ -276,7 +363,6 @@ export default function NuevaCotizacion() {
         </section>
       )}
 
-      {/* Paso 3: finalizar y exportar */}
       {cotizacion && cotizacion.estado !== "en_proceso" && (
         <section className="tarjeta mt-6">
           <h3 className="text-lg">3. Finalizar y exportar</h3>
@@ -298,7 +384,9 @@ export default function NuevaCotizacion() {
               </select>
             </div>
             <button onClick={manejarFinalizarYExportar} disabled={cargando} className="btn-primario">
-              {cotizacion.estado === "finalizada" ? `Descargar ${tipoExportacion.toUpperCase()}` : `Finalizar y descargar ${tipoExportacion.toUpperCase()}`}
+              {cotizacion.estado === "finalizada"
+                ? `Descargar ${tipoExportacion.toUpperCase()}`
+                : `Finalizar y descargar ${tipoExportacion.toUpperCase()}`}
             </button>
           </div>
         </section>
