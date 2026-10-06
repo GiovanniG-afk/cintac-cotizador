@@ -1,7 +1,8 @@
 import fetch from "node-fetch";
+import { TASA_FOB } from "./cotizadorConfig.js";
 
-// mindicador.cl entrega indicadores económicos oficiales de Chile
-// (Banco Central), no requiere API key. Lo usamos para el dólar observado.
+// El FOB vale lo mismo que el cambio de dólar (1 dólar = TASA_FOB CLP)
+// Por defecto usamos TASA_FOB, pero también consultamos mindicador.cl
 const MINDICADOR_URL = "https://mindicador.cl/api/dolar";
 
 let cache = { valor: null, fecha: null, obtenidoEn: 0 };
@@ -13,20 +14,36 @@ export async function obtenerTipoCambioUSD() {
     return cache;
   }
 
-  const respuesta = await fetch(MINDICADOR_URL);
-  if (!respuesta.ok) {
-    throw new Error("No se pudo obtener el tipo de cambio desde mindicador.cl");
-  }
-  const datos = await respuesta.json();
-  const ultimo = datos.serie?.[0];
-  if (!ultimo) {
-    throw new Error("Respuesta de tipo de cambio sin datos");
-  }
+  try {
+    const respuesta = await fetch(MINDICADOR_URL);
+    if (!respuesta.ok) {
+      throw new Error("No se pudo obtener el tipo de cambio desde mindicador.cl");
+    }
+    const datos = await respuesta.json();
+    const ultimo = datos.serie?.[0];
+    if (!ultimo) {
+      throw new Error("Respuesta de tipo de cambio sin datos");
+    }
 
-  cache = {
-    valor: ultimo.valor,
-    fecha: ultimo.fecha,
-    obtenidoEn: ahora,
-  };
-  return cache;
+    cache = {
+      valor: ultimo.valor,
+      fecha: ultimo.fecha,
+      obtenidoEn: ahora,
+    };
+    return cache;
+  } catch (error) {
+    console.warn(
+      `No se pudo obtener tipo de cambio de mindicador.cl, usando TASA_FOB: ${TASA_FOB}`
+    );
+    cache = {
+      valor: TASA_FOB,
+      fecha: new Date().toISOString(),
+      obtenidoEn: ahora,
+    };
+    return cache;
+  }
+}
+
+export function obtenerTasaFOB() {
+  return TASA_FOB;
 }
